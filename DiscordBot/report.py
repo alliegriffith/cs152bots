@@ -7,6 +7,8 @@ class State(Enum):
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
     REPORT_COMPLETE = auto()
+    AWAITING_MODERATION = auto()
+    DETERMINE_SEVERITY = auto()
 
 class Report:
     START_KEYWORD = "report"
@@ -55,13 +57,33 @@ class Report:
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
-            return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
+            self.message = message
         
         if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+            mod_channel = None
+            for guild in self.client.guilds:
+                if message.guild.id in self.client.mod_channels:
+                    mod_channel = self.client.mod_channels[message.guild.id]
+                    break
+
+            if mod_channel:
+                await mod_channel.send("🚨 A user has submitted a report!")
+                await mod_channel.send(f"Reported message from {message.author.display_name}:")
+                await mod_channel.send(f"> {message.content}")
+                await mod_channel.send(f"Message link: {message.jump_url}")
+                self.TOS_check = await mod_channel.send(f"Does the content violate our standing policies? Select yes (✅) or no (❌)")
+                await self.TOS_check.add_reaction("✅")
+                await self.TOS_check.add_reaction("❌")
+                self.state = State.AWAITING_MODERATION
+                self.client.reaction_to_report[self.TOS_check.id] = self
+
+
+            return [
+                "Thank you for your report. Our moderators have been notified and will take action if necessary.",
+            ]
 
         return []
+    
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE

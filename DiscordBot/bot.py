@@ -6,7 +6,7 @@ import json
 import logging
 import re
 import requests
-from report import Report
+from report import Report, State
 import pdb
 
 # Set up logging to the console
@@ -34,6 +34,8 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.reaction_to_report = {}
+        self.past_reports = {}
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -97,6 +99,65 @@ class ModBot(discord.Client):
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
             self.reports.pop(author_id)
+
+    async def on_reaction_add(self, reaction, user):
+        if user == self.user:
+            return
+        report = self.reaction_to_report.get(reaction.message.id)
+        del self.reaction_to_report[reaction.message.id]
+        if report == None:
+            return
+        if report.state == State.AWAITING_MODERATION:
+            if str(reaction.emoji) == "✅":
+                await reaction.message.channel.send("Report acknowledged, determining severity")
+                msg = await reaction.message.channel.send("Select the severity of the infraction:"
+                                                    "select 🔹 for a minor infraction or 🔷 for a major infraction")
+                self.reaction_to_report[msg.id] = report
+                report.state = State.DETERMINE_SEVERITY
+                await msg.add_reaction("🔹")
+                await msg.add_reaction("🔷")
+            if str(reaction.emoji) == "❌":
+                await reaction.message.channel.send("Report dismissed, closing report.")
+                report.state = State.REPORT_COMPLETE
+        if report.state == State.DETERMINE_SEVERITY:
+            if str(reaction.emoji) == "🔹":
+                if report.message.author.name not in self.past_reports:
+                    self.past_reports[report.message.author.name] = 1
+                else:
+                    self.past_reports[report.message.author.name] += 1
+                match self.past_reports[report.message.author.name]:
+                    case 1 | 2:
+                        await reaction.message.channel.send(f"Warning user {report.message.author.display_name}, minor "
+                                                            f"infraction number {self.past_reports[report.message.author.name]}")
+                        await report.message.author.send("We've noticed that your recent message violated our"
+                                                         " community guidelines. Please review our policies to "
+                                                         "avoid further action. Continued violations may result "
+                                                         "in suspension or removal from the platform.")
+                        await reaction.message.channel.send("Report complete, closing report.")
+                        report.state = State.REPORT_COMPLETE
+                    case 3:
+                        await reaction.message.channel.send(f"Simulating suspending user {report.message.author.display_name}, minor "
+                                                            f"infraction number {self.past_reports[report.message.author.name]}")
+                        await report.message.author.send("Your account has been temporarily suspended due to repeated "
+                                                         "violations of our community policies. You may log back in after "
+                                                         "7 days. Please review our guidelines to continue participating safely.")
+                        await reaction.message.channel.send("Report complete, closing report.")
+                        report.state = State.REPORT_COMPLETE
+                    case n if n >= 4:
+                        await reaction.message.channel.send(f"Simulating banning user {report.message.author.display_name}, minor "
+                                                            f"infraction number {self.past_reports[report.message.author.name]}")
+                        await report.message.author.send("Your account has been permanently removed due to a serious violation of"
+                                                         " our community standards. If you believe this was an error, you may submit"
+                                                          " an appeal within 7 days.")
+                        await reaction.message.channel.send("Report complete, closing report.")
+                        report.state = State.REPORT_COMPLETE
+            if str(reaction.emoji) == "🔷":
+                await reaction.message.channel.send(f"Simulating banning user {report.message.author.display_name}, major infraction")
+                await report.message.author.send("Your account has been permanently removed due to a serious violation of"
+                                                " our community standards. If you believe this was an error, you may submit"
+                                                " an appeal within 7 days.")
+                await reaction.message.channel.send("Report complete, closing report.")
+                report.state = State.REPORT_COMPLETE
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel

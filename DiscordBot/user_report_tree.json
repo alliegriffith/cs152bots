@@ -1,0 +1,75 @@
+{
+    "prompt": "Why are you reporting this message?",
+    "options": {
+        "Offensive Content": {
+            "prompt": "How is this message offensive?",
+            "options": {
+                "Sexually Explicit": {
+                    "prompt": "How did you come across this material?",
+                    "options": {
+                        "A stranger/new acquantiance sent it to me": {
+                            "warning": "Warning: Scammers often initiate sending nude images to pressure you to send nude content in return. They can then use it as blackmail.",
+                            "prompt": "How would you like to proceed?",
+                            "options": {
+                                "Report and Block User": {
+                                    "prompt": "Thank you, you have blocked the user.",
+                                    "final_note": ""
+                                },
+                                "Report and Shadow Block User (user can see your account but your likes/comments/DMs will be hidden from public": {
+                                    "prompt": "Thank you, you have shadow blocked the user.",
+                                    "final_note": ""
+                                }
+                            }
+                        },
+                        "A friend or significant other sent it": {
+                            "warning": "Warning: Relationships change. Please be wary of sending nude images to others who can use them against you in the future.",
+                            "prompt": "How would you like to proceed?",
+                            "options": {
+                                "Report and Block User": {
+                                    "prompt": "Thank you, you have blocked the user.",
+                                    "final_note": ""
+                                },
+                                "Report and Shadow Block User (user can see your account but your likes/comments/DMs will be hidden from public": {
+                                    "prompt": "Thank you, you have shadow blocked the user.",
+                                    "final_note": ""
+                                }
+                            }
+                        },
+                        "A public channel/group": {
+                            "prompt": "",
+                            "final_note": ""
+                        },
+                        "An ad": {
+                            "prompt": "",
+                            "final_note": ""
+                        }
+                    }
+                },
+                "Crude or Inappropriate Language": {
+                    "prompt": "",
+                    "final_note": ""
+                },
+                "Child Sexual Abuse Material": {
+                    "prompt": "",
+                    "final_note": ""
+                },
+                "Other": {
+                    "prompt": "What about this message is offensive?",
+                    "final_note": ""
+                }
+
+            }
+        },
+        "Violence" : {
+            "prompt": "How is this message violent?",
+            "final_note": "If you believe that you are in danger, contact local law enforcement immediately."
+        },
+        "I just don't like it": {
+            "prompt": "",
+            "final_note": ""
+        },
+        "Harassment": {
+            "TODO": "TODO"
+        }
+    }
+}

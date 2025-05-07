@@ -6,9 +6,10 @@ class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
-    REPORT_COMPLETE = auto()
+    IN_USER_REPORTING_FLOW = auto()
     AWAITING_MODERATION = auto()
     DETERMINE_SEVERITY = auto()
+    REPORT_COMPLETE = auto()
 
 class Report:
     START_KEYWORD = "report"

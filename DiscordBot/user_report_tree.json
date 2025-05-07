@@ -12,12 +12,10 @@
                             "prompt": "How would you like to proceed?",
                             "options": {
                                 "Report and Block User": {
-                                    "prompt": "Thank you, you have blocked the user.",
-                                    "final_note": ""
+                                    "prompt": "Thank you, you have blocked the user."
                                 },
                                 "Report and Shadow Block User (user can see your account but your likes/comments/DMs will be hidden from public": {
-                                    "prompt": "Thank you, you have shadow blocked the user.",
-                                    "final_note": ""
+                                    "prompt": "Thank you, you have shadow blocked the user."
                                 }
                             }
                         },
@@ -26,36 +24,29 @@
                             "prompt": "How would you like to proceed?",
                             "options": {
                                 "Report and Block User": {
-                                    "prompt": "Thank you, you have blocked the user.",
-                                    "final_note": ""
+                                    "prompt": "Thank you, you have blocked the user."
                                 },
                                 "Report and Shadow Block User (user can see your account but your likes/comments/DMs will be hidden from public": {
-                                    "prompt": "Thank you, you have shadow blocked the user.",
-                                    "final_note": ""
+                                    "prompt": "Thank you, you have shadow blocked the user."
                                 }
                             }
                         },
                         "A public channel/group": {
-                            "prompt": "",
-                            "final_note": ""
+                            "prompt": ""
                         },
                         "An ad": {
-                            "prompt": "",
-                            "final_note": ""
+                            "prompt": ""
                         }
                     }
                 },
                 "Crude or Inappropriate Language": {
-                    "prompt": "",
-                    "final_note": ""
+                    "prompt": ""
                 },
                 "Child Sexual Abuse Material": {
-                    "prompt": "",
-                    "final_note": ""
+                    "prompt": ""
                 },
                 "Other": {
-                    "prompt": "What about this message is offensive?",
-                    "final_note": ""
+                    "prompt": "What about this message is offensive?"
                 }
 
             }
@@ -65,11 +56,37 @@
             "final_note": "If you believe that you are in danger, contact local law enforcement immediately."
         },
         "I just don't like it": {
-            "prompt": "",
-            "final_note": ""
+            "prompt": ""
         },
         "Harassment": {
-            "TODO": "TODO"
+            "prompt": "What kind of harassment?",
+            "options": {
+                "Hate Speech": {
+                    "prompt": ""
+                },
+                "Credible Threat of Violence": {
+                    "prompt": "How can we best support you?",
+                    "final_note": "If you believe that you are in danger, contact local law enforcement immediately."
+                },
+                "Blackmail": {
+                    "prompt": "How are you being blackmailed?",
+                    "options": {
+                        "Someone is threateneing to share my nude images/content": {
+                            "prompt": "We are sorry for you situation. This is a crime and not your fault. Make sure you do not comply with threats. Instead, reach out to someone you trust for help.",
+                            "final_note": "If you are under 18, please visit Take it Down to get the content removed from the internet. https://takeitdown.ncmec.org/"
+                        },
+                        "Physical Threat": {
+                            "prompt": "We are sorry for your situation."
+                        },
+                        "Cyber Threat": {
+                            "prompt": "We are sorry for your situation."
+                        }
+                    }
+                },
+                "Other": {
+                    "prompt": "How are you being harassed?"
+                }
+            }
         }
     }
 }

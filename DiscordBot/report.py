@@ -5,8 +5,8 @@ import re
 class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
-    MESSAGE_IDENTIFIED = auto()
-    IN_USER_REPORTING_FLOW = auto()
+    MESSAGE_IDENTIFIED = auto()  # this name could also be IN_USER_REPORTING FLOW
+    FINISHED_USER_REPORTING_FLOW = auto()
     AWAITING_MODERATION = auto()
     DETERMINE_SEVERITY = auto()
     REPORT_COMPLETE = auto()
@@ -61,6 +61,11 @@ class Report:
             self.message = message
         
         if self.state == State.MESSAGE_IDENTIFIED:
+            # TO DO: python logic to work with the json here (see my_test.py)
+            pass
+            self.state = State.FINISHED_USER_REPORTING_FLOW
+
+        if self.state == State.FINISHED_USER_REPORTING_FLOW:    
             mod_channel = None
             for guild in self.client.guilds:
                 if message.guild.id in self.client.mod_channels:

@@ -1,11 +1,13 @@
 from enum import Enum, auto
 import discord
 import re
+import json
 
 class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
-    MESSAGE_IDENTIFIED = auto()  # this name could also be IN_USER_REPORTING FLOW
+    IN_USER_REPORTING_FLOW = auto()
+    AWAITING_ADDITIONAL_DETAILS = auto()
     FINISHED_USER_REPORTING_FLOW = auto()
     AWAITING_MODERATION = auto()
     DETERMINE_SEVERITY = auto()
@@ -20,6 +22,12 @@ class Report:
         self.state = State.REPORT_START
         self.client = client
         self.message = None
+        with open("user_report_tree.json", "r") as f:
+            self.user_report_tree = json.load(f)
+
+        self.current_node = self.user_report_tree
+        self.path = []  # list of keys chosen so far
+        self.reporter_message = ""  # 500 character message submitted by reporter
     
     async def handle_message(self, message):
         '''
@@ -52,20 +60,57 @@ class Report:
             if not channel:
                 return ["It seems this channel was deleted or never existed. Please try again or say `cancel` to cancel."]
             try:
-                message = await channel.fetch_message(int(m.group(3)))
+                reported_message = await channel.fetch_message(int(m.group(3)))
             except discord.errors.NotFound:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
 
             # Here we've found the message - it's up to you to decide what to do next!
-            self.state = State.MESSAGE_IDENTIFIED
-            self.message = message
+            self.state = State.IN_USER_REPORTING_FLOW
+            self.message = reported_message
         
-        if self.state == State.MESSAGE_IDENTIFIED:
-            # TO DO: python logic to work with the json here (see my_test.py)
-            pass
+        # traverse user_report_tree
+        if self.state == State.IN_USER_REPORTING_FLOW:
+            node = self.current_node
+            reply = ""
+
+            # if there are options on current ndoe, try to move to next node (given digit)
+            if node.get("options") and message.content.strip().isdigit():
+                choice_idx = int(message.content.strip()) - 1
+                options = list(node["options"].keys())
+                if 0 <= choice_idx < len(options):
+                    selected = options[choice_idx]
+                    self.path.append(selected)
+                    node = node["options"][selected]
+                    self.current_node = node
+                else:
+                    return ["Invalid choice. Please pick one of the numbers above"]
+            
+            # display warning then prompt
+            if node.get("warning"):
+                reply += f"{node['warning']}\n\n"
+            if node.get("prompt"):
+                reply += f"{node['prompt']}\n"
+
+            # display options
+            if node.get("options"):
+                for idx, opt in enumerate(node["options"].keys(), start=1):
+                    reply += f"{idx}. {opt}\n"
+                reply += f"Please enter a number from the list above.\n"
+                return [reply]
+                
+            else:
+                reply += "Please provide any additional details to help our moderators best address your situation. (500 characters, or enter \'None\' if you have no notes.)\n"
+                if node.get("final_note"):
+                    reply += f"{node['final_note']}\n"
+                self.state = State.AWAITING_ADDITIONAL_DETAILS
+                return [reply]
+
+        
+        if self.state == State.AWAITING_ADDITIONAL_DETAILS:
+            self.reporter_message = message.content[:500]
             self.state = State.FINISHED_USER_REPORTING_FLOW
 
-        if self.state == State.FINISHED_USER_REPORTING_FLOW:    
+        if self.state == State.FINISHED_USER_REPORTING_FLOW:
             mod_channel = None
             for guild in self.client.guilds:
                 if message.guild.id in self.client.mod_channels:
@@ -93,8 +138,3 @@ class Report:
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
-    
-
-
-    
-

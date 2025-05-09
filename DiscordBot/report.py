@@ -26,7 +26,7 @@ class Report:
             self.user_report_tree = json.load(f)
 
         self.current_node = self.user_report_tree
-        self.path = []  # list of keys chosen so far
+        self.report_path = []  # list of keys chosen so far
         self.reporter_message = ""  # 500 character message submitted by reporter
     
     async def handle_message(self, message):
@@ -79,7 +79,7 @@ class Report:
                 options = list(node["options"].keys())
                 if 0 <= choice_idx < len(options):
                     selected = options[choice_idx]
-                    self.path.append(selected)
+                    self.report_path.append(selected)
                     node = node["options"][selected]
                     self.current_node = node
                 else:
@@ -113,28 +113,34 @@ class Report:
         if self.state == State.FINISHED_USER_REPORTING_FLOW:
             mod_channel = None
             for guild in self.client.guilds:
-                if message.guild.id in self.client.mod_channels:
-                    mod_channel = self.client.mod_channels[message.guild.id]
+                if self.message.guild.id in self.client.mod_channels:
+                    mod_channel = self.client.mod_channels[self.message.guild.id]
                     break
 
             if mod_channel:
                 await mod_channel.send("🚨 A user has submitted a report!")
-                await mod_channel.send(f"Reported message from {message.author.display_name}:")
-                await mod_channel.send(f"> {message.content}")
-                await mod_channel.send(f"Message link: {message.jump_url}")
+                await mod_channel.send(f"Reported message from {self.message.author.display_name}:")
+                await mod_channel.send(f"> {self.message.content}")
+                await mod_channel.send(f"Message link: {self.message.jump_url}")
+
+                await mod_channel.send(f"Here is information provided by the user:")
+                reporter_information = "User report path: \n"
+                for key in self.report_path:
+                    reporter_information += f"\t->{key}\n"
+                reporter_information += f"Additional details provided by reporter:\n{self.reporter_message}\n"
+                await mod_channel.send(reporter_information)
+
                 self.TOS_check = await mod_channel.send(f"Does the content violate our standing policies? Select yes (✅) or no (❌)")
                 await self.TOS_check.add_reaction("✅")
                 await self.TOS_check.add_reaction("❌")
                 self.state = State.AWAITING_MODERATION
                 self.client.reaction_to_report[self.TOS_check.id] = self
 
-
             return [
-                "Thank you for your report. Our moderators have been notified and will take action if necessary.",
+                "Thank you for your report. Our moderators have been notified and will address your report immediately.",
             ]
 
         return []
     
-
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE

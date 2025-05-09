@@ -89,7 +89,7 @@ class ModBot(discord.Client):
 
         # If we don't currently have an active report for this user, add one
         if author_id not in self.reports:
-            self.reports[author_id] = Report(self)
+            self.reports[author_id] = Report(self, message.author)
 
         # Let the report class handle this message; forward all the messages it returns to uss
         responses = await self.reports[author_id].handle_message(message)
@@ -158,6 +158,9 @@ class ModBot(discord.Client):
                                                 " an appeal within 7 days.")
                 await reaction.message.channel.send("Report complete, closing report.")
                 report.state = State.REPORT_COMPLETE
+        
+        if self.reports[report.author.id].report_complete():
+            self.reports.pop(report.author.id)
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel

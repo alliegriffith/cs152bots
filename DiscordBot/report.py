@@ -18,16 +18,17 @@ class Report:
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
 
-    def __init__(self, client):
+    def __init__(self, client, author):
         self.state = State.REPORT_START
         self.client = client
+        self.author = author
         self.message = None
         with open("user_report_tree.json", "r") as f:
             self.user_report_tree = json.load(f)
 
         self.current_node = self.user_report_tree
         self.report_path = []  # list of keys chosen so far
-        self.reporter_message = ""  # 500 character message submitted by reporter
+        self.author_message = ""  # 500 character message submitted by author
     
     async def handle_message(self, message):
         '''
@@ -107,7 +108,7 @@ class Report:
 
         
         if self.state == State.AWAITING_ADDITIONAL_DETAILS:
-            self.reporter_message = message.content[:500]
+            self.author_message = message.content[:500]
             self.state = State.FINISHED_USER_REPORTING_FLOW
 
         if self.state == State.FINISHED_USER_REPORTING_FLOW:
@@ -123,12 +124,12 @@ class Report:
                 await mod_channel.send(f"> {self.message.content}")
                 await mod_channel.send(f"Message link: {self.message.jump_url}")
 
-                await mod_channel.send(f"Here is information provided by the user:")
-                reporter_information = "User report path: \n"
+                await mod_channel.send(f"Here is information provided by the author:")
+                author_information = "User report path: \n"
                 for key in self.report_path:
-                    reporter_information += f"\t->{key}\n"
-                reporter_information += f"Additional details provided by reporter:\n{self.reporter_message}\n"
-                await mod_channel.send(reporter_information)
+                    author_information += f"\t->{key}\n"
+                author_information += f"Additional details provided by author:\n{self.author_message}\n"
+                await mod_channel.send(author_information)
 
                 self.TOS_check = await mod_channel.send(f"Does the content violate our standing policies? Select yes (✅) or no (❌)")
                 await self.TOS_check.add_reaction("✅")

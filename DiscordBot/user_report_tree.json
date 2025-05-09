@@ -7,7 +7,7 @@
                 "Sexually Explicit": {
                     "prompt": "How did you come across this material?",
                     "options": {
-                        "A stranger/new acquantiance sent it to me": {
+                        "A stranger/new acquaintance sent it to me": {
                             "warning": "Warning: Scammers often initiate sending nude images to pressure you to send nude content in return. They can then use it as blackmail.",
                             "prompt": "How would you like to proceed?",
                             "options": {

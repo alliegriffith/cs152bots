@@ -29,6 +29,7 @@ class Report:
         self.current_node = self.user_report_tree
         self.report_path = []  # list of keys chosen so far
         self.author_message = ""  # 500 character message submitted by author
+        self.author_skipped = False
     
     async def handle_message(self, message):
         '''
@@ -78,11 +79,22 @@ class Report:
             if node.get("options") and message.content.strip().isdigit():
                 choice_idx = int(message.content.strip()) - 1
                 options = list(node["options"].keys())
+                skip_idx = len(options)
+
+                # user selects tree option
                 if 0 <= choice_idx < len(options):
                     selected = options[choice_idx]
                     self.report_path.append(selected)
                     node = node["options"][selected]
                     self.current_node = node
+
+                # user selects skip option
+                elif choice_idx == skip_idx:
+                    self.report_path.append("Skipped questionnaire")
+                    self.author_skipped = True
+                    self.state = State.AWAITING_ADDITIONAL_DETAILS
+                    return ["Skipping questionnaire and sending report.\n" "Please provide any additional details to help our moderators best address your situation. (500 characters, or enter \'None\' if you have no notes.)\n"]
+                
                 else:
                     return ["Invalid choice. Please pick one of the numbers above"]
             
@@ -95,8 +107,12 @@ class Report:
             # display options
             if node.get("options"):
                 for idx, opt in enumerate(node["options"].keys(), start=1):
-                    reply += f"{idx}. {opt}\n"
+                    reply += f"` {idx}. ` {opt}\n"
+                
+                # display skip option
+                reply += f"` {len(node['options'])+1}. ` Skip questionnaire and send report\n"
                 reply += f"Please enter a number from the list above.\n"
+
                 return [reply]
                 
             else:
@@ -119,17 +135,20 @@ class Report:
                     break
 
             if mod_channel:
-                await mod_channel.send("🚨 A user has submitted a report!")
-                await mod_channel.send(f"Reported message from {self.message.author.display_name}:")
-                await mod_channel.send(f"> {self.message.content}")
-                await mod_channel.send(f"Message link: {self.message.jump_url}")
+                report_notification = "🚨 A user has submitted a report!"
+                report_notification += "🚨 A user has submitted a report!"
+                report_notification += f"Reported message from {self.message.author.display_name}:"
+                report_notification += f"> {self.message.content}"
+                report_notification += f"Message link: {self.message.jump_url}"
 
-                await mod_channel.send(f"Here is information provided by the author:")
-                author_information = "User report path: \n"
+                author_information = f"Information provided by the author"
+                author_information += "------------------------------------------\n"
+                author_information += "User report path:\n"
                 for key in self.report_path:
-                    author_information += f"\t->{key}\n"
+                    author_information += f"` -> `{key}\n"
                 author_information += f"Additional details provided by author:\n{self.author_message}\n"
-                await mod_channel.send(author_information)
+                author_information += "------------------------------------------\n"
+                await mod_channel.send(report_notification + author_information)
 
                 self.TOS_check = await mod_channel.send(f"Does the content violate our standing policies? Select yes (✅) or no (❌)")
                 await self.TOS_check.add_reaction("✅")

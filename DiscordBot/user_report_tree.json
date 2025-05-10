@@ -16,6 +16,9 @@
                                 },
                                 "Report and Shadow Block User (user can see your account but your likes/comments/DMs will be hidden from public": {
                                     "prompt": "Thank you, you have shadow blocked the user."
+                                },
+                                "Just Report": {
+                                    "prompt": ""
                                 }
                             }
                         },
@@ -28,6 +31,9 @@
                                 },
                                 "Report and Shadow Block User (user can see your account but your likes/comments/DMs will be hidden from public": {
                                     "prompt": "Thank you, you have shadow blocked the user."
+                                },
+                                "Just Report": {
+                                    "prompt": ""
                                 }
                             }
                         },

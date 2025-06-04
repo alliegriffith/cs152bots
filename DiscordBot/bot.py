@@ -8,6 +8,88 @@ import re
 import requests
 from report import Report, State
 import pdb
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch.nn as nn
+import pandas as pd
+
+# code for importing and running automatic bot
+class Critic(nn.Module):
+    def __init__(self, hidden_size):
+        super().__init__()
+        self.critic = nn.Sequential(
+            nn.Linear(hidden_size, 2048),
+            nn.ReLU(),
+            nn.Linear(2048, 2048),
+            nn.ReLU(),
+            nn.Linear(2048, 1)
+        )
+
+    def forward(self, hidden_vec):
+        return self.critic(hidden_vec)   # returns shape [batch_size, 1]
+
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+base_model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+model = AutoModelForCausalLM.from_pretrained(
+    base_model_name,
+    output_hidden_states=True
+).to(device)
+model.eval()
+
+tokenizer = AutoTokenizer.from_pretrained(
+    base_model_name,
+    padding_side="left"
+)
+
+# create new critic and load trained values into it
+hidden_size = model.config.hidden_size 
+print("hidden size of tiny llama:", hidden_size)
+critic = Critic(hidden_size).to(device)
+critic_load_path = "critic_sextortion.pt"
+critic.load_state_dict(torch.load(critic_load_path, map_location=device))
+critic.eval()
+print(f"Loaded critic weights from {critic_load_path}")
+
+# use critic to predict if message is from perpetrator of sextortion
+def predict_sextortion(text: str) -> float:
+    """
+    Returns a float in [0,1], the critic’s predicted probability
+    that ‘text’ is a sextortion message.
+    """
+    # tokenize message
+    toks = tokenizer(
+        text,
+        return_tensors="pt",
+        padding=True,
+        truncation=True
+    )
+    
+    input_ids      = toks["input_ids"].to(device)      # [1, seq_len]
+    attention_mask = toks["attention_mask"].to(device)
+
+    # forward pass through TinyLlama (to get hidden states)
+    with torch.no_grad():
+        outputs = model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            output_hidden_states=True,
+            return_dict=True
+        )
+        # take the last hidden state for the last token (bc tinyllama is causal, reps all previous tokens)
+        last_token_hidden = outputs.hidden_states[-1][:, -1, :]       # [1, seq_len, hidden_size]
+        
+
+        # forward pass through critic → raw score
+        score = critic(last_token_hidden).view(-1)                # [1]
+
+        # convert to prob via sigmoid
+        prob = torch.sigmoid(score).item()             # Python float in [0,1]
+        
+        return prob
+
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -179,7 +261,9 @@ class ModBot(discord.Client):
         TODO: Once you know how you want to evaluate messages in your channel, 
         insert your code here! This will primarily be used in Milestone 3. 
         '''
-        return message
+        score = predict_sextortion(message)
+            
+        return score
 
     
     def code_format(self, text):
@@ -188,7 +272,7 @@ class ModBot(discord.Client):
         evaluated, insert your code here for formatting the string to be 
         shown in the mod channel. 
         '''
-        return "Evaluated: '" + text+ "'"
+        return f"Evaluated: {text}"
 
 
 client = ModBot()

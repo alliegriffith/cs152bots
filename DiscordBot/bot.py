@@ -13,6 +13,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch.nn as nn
 import pandas as pd
 
+knownViolators = {} # global! keeps track over all messages
+
 # code for importing and running automatic bot
 class Critic(nn.Module):
     def __init__(self, hidden_size):
@@ -90,7 +92,6 @@ def predict_sextortion(text: str) -> float:
         
         return prob
 
-
 # Set up logging to the console
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
@@ -109,13 +110,13 @@ with open(token_path) as f:
 
 
 class ModBot(discord.Client):
-    def __init__(self): 
+    def __init__(self):
         intents = discord.Intents.default()
         intents.message_content = True
         super().__init__(command_prefix='.', intents=intents)
         self.group_num = None
-        self.mod_channels = {} # Map from guild to the mod channel id for that guild
-        self.reports = {} # Map from user IDs to the state of their report
+        self.mod_channels = {}  # Map from guild to the mod channel id for that guild
+        self.reports = {}  # Map from user IDs to the state of their report
         self.reaction_to_report = {}
         self.past_reports = {}
 
@@ -137,14 +138,13 @@ class ModBot(discord.Client):
             for channel in guild.text_channels:
                 if channel.name == f'group-{self.group_num}-mod':
                     self.mod_channels[guild.id] = channel
-        
 
     async def on_message(self, message):
         '''
-        This function is called whenever a message is sent in a channel that the bot can see (including DMs). 
-        Currently the bot is configured to only handle messages that are sent over DMs or in your group's "group-#" channel. 
+        This function is called whenever a message is sent in a channel that the bot can see (including DMs).
+        Currently the bot is configured to only handle messages that are sent over DMs or in your group's "group-#" channel.
         '''
-        # Ignore messages from the bot 
+        # Ignore messages from the bot
         if message.author.id == self.user.id:
             return
 
@@ -157,7 +157,7 @@ class ModBot(discord.Client):
     async def handle_dm(self, message):
         # Handle a help message
         if message.content == Report.HELP_KEYWORD:
-            reply =  "Use the `report` command to begin the reporting process.\n"
+            reply = "Use the `report` command to begin the reporting process.\n"
             reply += "Use the `cancel` command to cancel the report process.\n"
             await message.channel.send(reply)
             return
@@ -193,7 +193,7 @@ class ModBot(discord.Client):
             if str(reaction.emoji) == "✅":
                 await reaction.message.channel.send("Report acknowledged, determining severity")
                 msg = await reaction.message.channel.send("Select the severity of the infraction:"
-                                                    "select 🔹 for a minor infraction or 🔷 for a major infraction")
+                                                          "select 🔹 for a minor infraction or 🔷 for a major infraction")
                 self.reaction_to_report[msg.id] = report
                 report.state = State.DETERMINE_SEVERITY
                 await msg.add_reaction("🔹")
@@ -218,29 +218,34 @@ class ModBot(discord.Client):
                         await reaction.message.channel.send("Report complete, closing report.")
                         report.state = State.REPORT_COMPLETE
                     case 3:
-                        await reaction.message.channel.send(f"Simulating suspending user {report.message.author.display_name}, minor "
-                                                            f"infraction number {self.past_reports[report.message.author.name]}")
+                        await reaction.message.channel.send(
+                            f"Simulating suspending user {report.message.author.display_name}, minor "
+                            f"infraction number {self.past_reports[report.message.author.name]}")
                         await report.message.author.send("Your account has been temporarily suspended due to repeated "
                                                          "violations of our community policies. You may log back in after "
                                                          "7 days. Please review our guidelines to continue participating safely.")
                         await reaction.message.channel.send("Report complete, closing report.")
                         report.state = State.REPORT_COMPLETE
                     case n if n >= 4:
-                        await reaction.message.channel.send(f"Simulating banning user {report.message.author.display_name}, minor "
-                                                            f"infraction number {self.past_reports[report.message.author.name]}")
-                        await report.message.author.send("Your account has been permanently removed due to a serious violation of"
-                                                         " our community standards. If you believe this was an error, you may submit"
-                                                          " an appeal within 7 days.")
+                        await reaction.message.channel.send(
+                            f"Simulating banning user {report.message.author.display_name}, minor "
+                            f"infraction number {self.past_reports[report.message.author.name]}")
+                        await report.message.author.send(
+                            "Your account has been permanently removed due to a serious violation of"
+                            " our community standards. If you believe this was an error, you may submit"
+                            " an appeal within 7 days.")
                         await reaction.message.channel.send("Report complete, closing report.")
                         report.state = State.REPORT_COMPLETE
             if str(reaction.emoji) == "🔷":
-                await reaction.message.channel.send(f"Simulating banning user {report.message.author.display_name}, major infraction")
-                await report.message.author.send("Your account has been permanently removed due to a serious violation of"
-                                                " our community standards. If you believe this was an error, you may submit"
-                                                " an appeal within 7 days.")
+                await reaction.message.channel.send(
+                    f"Simulating banning user {report.message.author.display_name}, major infraction")
+                await report.message.author.send(
+                    "Your account has been permanently removed due to a serious violation of"
+                    " our community standards. If you believe this was an error, you may submit"
+                    " an appeal within 7 days.")
                 await reaction.message.channel.send("Report complete, closing report.")
                 report.state = State.REPORT_COMPLETE
-        
+
         if self.reports[report.author.id].report_complete():
             self.reports.pop(report.author.id)
 
@@ -254,23 +259,48 @@ class ModBot(discord.Client):
         await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
         scores = self.eval_text(message.content)
         await mod_channel.send(self.code_format(scores))
+        # if score is above 0.4 confidence warn channel that the message may be an instance of sextortion, to seek help 
+        # not send nudes to people you don't trust HELP CHAT!
+        if 0.4 < scores < 0.5:
+            await message.channel.send("Warning! Please be warry of sharing intimate images of yourself. People online may not be who they claim they are and relationships can change. Shared nude images can be used as blackmail against you in the future.")
+        if scores >= 0.5:
+            await message.channel.send("Warning! The previous message was flagged by our automated content moderation system "
+                                       "for signs of sextortion. If someone is threatening to share your intemate content, there is hope! Please" 
+                                       " reach out to a loved one for support and cease complying with demands. If you feel comfortable,"
+                                       " please report the user to law enforcement. Our content moderation team is already reviewing the situation."
+                                       "  Additionally, if you are under the age of 18, you can go to https://takeitdown.ncmec.org/ to have all nude images of you removed from the internet.")
+        if scores > 0.5:
+            report = Report(self, self.user, initial_state=State.FINISHED_USER_REPORTING_FLOW)
+            report.message = message
+            self.reports[self.user.id] = report
+            
+            # update known violators
+            if message.author.name in knownViolators:
+                # repeat offender, increase count of violations
+                knownViolators[message.author.name] += 1
+            else:
+                knownViolators[message.author.name] = 0
+            await mod_channel.send(f'Automatic report triggered from user {message.author.name}. User has {knownViolators[message.author.name]} previous automatic flags.')
+            self.TOS_check = await mod_channel.send(
+                f"Does the content violate our standing policies? Select yes (✅) or no (❌)")
+            await self.TOS_check.add_reaction("✅")
+            await self.TOS_check.add_reaction("❌")
+            report.state = State.AWAITING_MODERATION
+            report.client.reaction_to_report[self.TOS_check.id] = report
 
-    
     def eval_text(self, message):
         ''''
-        TODO: Once you know how you want to evaluate messages in your channel, 
-        insert your code here! This will primarily be used in Milestone 3. 
+        TODO: Once you know how you want to evaluate messages in your channel,
+        insert your code here! This will primarily be used in Milestone 3.
         '''
         score = predict_sextortion(message)
-            
         return score
 
-    
     def code_format(self, text):
         ''''
-        TODO: Once you know how you want to show that a message has been 
-        evaluated, insert your code here for formatting the string to be 
-        shown in the mod channel. 
+        TODO: Once you know how you want to show that a message has been
+        evaluated, insert your code here for formatting the string to be
+        shown in the mod channel.
         '''
         return f"Evaluated: {text}"
 

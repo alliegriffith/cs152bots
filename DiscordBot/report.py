@@ -17,9 +17,12 @@ class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
     HELP_KEYWORD = "help"
+    
+    def __init__(self, client, author, *, initial_state: State = State.REPORT_START):
+        self.state = initial_state
 
-    def __init__(self, client, author):
-        self.state = State.REPORT_START
+    # def __init__(self, client, author):
+    #     self.state = State.REPORT_START
         self.client = client
         self.author = author
         self.message = None
